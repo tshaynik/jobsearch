@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -23,29 +22,29 @@ func main() {
 		RedirectURL:  "http://localhost:9090/callback",
 	}
 
-	db, err := mgo.Dial("localhost")
+	s, err := mgo.Dial("localhost")
 	if err != nil {
 		log.Fatalln("Failed to dial ")
 	}
+	db := jobsearch.NewDB(s)
 
 	auth := jobsearch.AuthController{
 		Config: oauthConfig,
-		DB:     jobsearch.NewDB(db),
+		DB:     db,
 	}
+	uc := jobsearch.NewUserController(db)
 
 	r.HandleFunc("/", notImplemented)
 	r.HandleFunc("/login", auth.Login).Methods(http.MethodGet)
 	r.HandleFunc("/callback", auth.Callback)
-	r.Handle("crap", auth.MustAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		email := w.Header().Get("user_email")
-		fmt.Fprintf(w, email)
-	})))
 
 	r.HandleFunc("/jobs", notImplemented).Methods(http.MethodGet)
 	r.HandleFunc("/jobs", notImplemented).Methods(http.MethodPost)
 	r.HandleFunc("/jobs/{id}", notImplemented).Methods(http.MethodGet)
 	r.HandleFunc("/jobs/{id}", notImplemented).Methods(http.MethodDelete)
 	r.HandleFunc("/jobs/{id}/apply", notImplemented).Methods(http.MethodPut)
+
+	r.Handle("/user", uc.MustAuth(http.HandlerFunc(uc.GetUser)))
 
 	log.Println("Listening on port :9090")
 	http.ListenAndServe(":9090", r)

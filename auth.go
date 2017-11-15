@@ -20,21 +20,21 @@ var signingKey = []byte("Secret signing key")
 
 // AuthJWT contains the JWT AuthToken to be used for future authorization.
 type AuthJWT struct {
-	BearerToken string `json:"bearer_token"`
+	BearerToken string `json:"bearer_token" bson:"bearer_token"`
 }
 
 // AuthToken is the token used for authentication into the application, that is
 // inspected by the MustAuth middleware on routes requiring authentication.
 type AuthToken struct {
-	Email   string    `json:"email" bson:"email"`
+	Login   string    `json:"login" bson:"login"`
 	Expires time.Time `json:"exp" bson:"exp"`
 }
 
-// NewAuthToken generates a new auth token struct containing the user's email address
+// NewAuthToken generates a new auth token struct containing the user's username
 // and the expiration time.
-func NewAuthToken(email string) *AuthToken {
+func NewAuthToken(login string) *AuthToken {
 	at := &AuthToken{
-		Email:   email,
+		Login:   login,
 		Expires: time.Now().Add(time.Hour * 24),
 	}
 	return at
@@ -43,7 +43,7 @@ func NewAuthToken(email string) *AuthToken {
 // Tokenize converts a State instance into a signed JWT.
 func (s AuthToken) Tokenize() (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"email": s.Email,
+		"login": s.Login,
 		"exp":   s.Expires,
 	})
 
@@ -70,9 +70,10 @@ func ParseAuthToken(token string) (*AuthToken, error) {
 		return nil, err
 	}
 	at := &AuthToken{
-		Email:   claims["email"].(string),
+		Login:   claims["login"].(string),
 		Expires: exp,
 	}
+	log.Println("AuthToken login:", at.Login)
 	return at, nil
 }
 
@@ -200,20 +201,31 @@ func (a AuthController) Callback(w http.ResponseWriter, r *http.Request) {
 
 	oauthClient := a.Config.Client(oauth2.NoContext, token)
 	client := github.NewClient(oauthClient)
-	user, _, err := client.Users.Get(context.Background(), "")
+	gu, _, err := client.Users.Get(context.Background(), "")
+	user := NewUserFromGithub(gu)
 	if err != nil {
 		log.Printf("client.Users.Get() faled with '%s'\n", err)
 		http.Error(w, "Failed to retrieve GitHub authentication", http.StatusInternalServerError)
 		return
 	}
-	log.Printf("Logged in as GitHub user: %s\n", *user.Login)
-	at, err := NewAuthToken(user.GetEmail()).Tokenize()
+	log.Printf("Logged in as GitHub user: %s\n", user.Login)
+	at, err := NewAuthToken(user.Login).Tokenize()
 	if err != nil {
 		log.Printf("AuthToken.Tokenize() failed with '%s'\n", err)
 		http.Error(w, "Failed to generate auth token", http.StatusInternalServerError)
 		return
 	}
-	response := AuthJWT{BearerToken: at}
+	if err := a.DB.UpsertUser(user); err != nil {
+		log.Printf("db.UpsertUser failed with '%s'\n", err)
+		http.Error(w, "Failed to save user", http.StatusInternalServerError)
+		return
+	}
+	response := &AuthJWT{BearerToken: at}
+	if err := a.DB.SaveAuthJWT(response); err != nil {
+		log.Printf("DB.SaveAuthJWT() failed with '%s'\n", err)
+		http.Error(w, "Failed to save auth token", http.StatusInternalServerError)
+		return
+	}
 	respond(w, r, http.StatusOK, response)
 }
 
@@ -233,28 +245,4 @@ func extractJWT(r *http.Request) (string, error) {
 		return "", errors.New("Authorization header not set properly with Bearer")
 	}
 	return head[1], nil
-}
-
-// MustAuth is HTTP middleware for the authorization of a resource, which validates
-// the JWT passed in the Authorization header, and if authorized, passes the user
-// information to the request context.
-func (a AuthController) MustAuth(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		jwt, err := extractJWT(r)
-		if err != nil {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
-			return
-		}
-		if !a.DB.ValidateAuthJWT(jwt) {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
-			return
-		}
-		at, err := ParseAuthToken(jwt)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		r.Header.Set("user_email", at.Email)
-		next.ServeHTTP(w, r)
-	})
 }

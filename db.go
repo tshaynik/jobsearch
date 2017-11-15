@@ -1,7 +1,6 @@
 package jobsearch
 
 import (
-	"github.com/google/go-github/github"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -99,23 +98,23 @@ func (db DB) RemoveAuthJWT(token string) error {
 	return s.DB(app).C("auth_token").Remove(bson.M{"bearer_token": token})
 }
 
-// UpsertUser matches an existing user by email address in the database, or
+// UpsertUser matches an existing user by username (Github login) in the database, or
 // inserts a new user if none exists already.
-func (db DB) UpsertUser(u *github.User) error {
+func (db DB) UpsertUser(u *User) error {
 	s := db.session.Copy()
 	defer s.Close()
-	_, err := s.DB(app).C("users").Upsert(bson.M{"email": u.GetEmail()}, u)
+	_, err := s.DB(app).C("users").Upsert(bson.M{"login": u.Login}, u)
 	return err
 }
 
-// GetUser retrieves a user from the database with a given email address.
-func (db DB) GetUser(email string) (*github.User, error) {
+// GetUser retrieves a user from the database with a given github login.
+func (db DB) GetUser(login string) (*User, error) {
 	s := db.session.Copy()
 	defer s.Close()
-	var u *github.User
-	err := s.DB(app).C("users").Find(bson.M{"email": email}).One(u)
+	var u User
+	err := s.DB(app).C("users").Find(bson.M{"login": login}).One(&u)
 	if err != nil {
 		return nil, err
 	}
-	return u, nil
+	return &u, nil
 }
