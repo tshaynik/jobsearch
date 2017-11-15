@@ -39,11 +39,11 @@ func (db DB) UpdateJob(j *Job) error {
 }
 
 // FindAllJobs returns all jobs in the database.
-func (db DB) FindAllJobs() ([]*Job, error) {
+func (db DB) FindAllJobs(login string) ([]*Job, error) {
 	s := db.session.Copy()
 	defer s.Close()
 	var jobs []*Job
-	if err := s.DB(app).C("jobs").Find(nil).All(&jobs); err != nil {
+	if err := s.DB(app).C("jobs").Find(bson.M{"user_login": login}).All(&jobs); err != nil {
 		return nil, err
 	}
 	return jobs, nil

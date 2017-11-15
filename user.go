@@ -2,6 +2,7 @@ package jobsearch
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/google/go-github/github"
@@ -71,4 +72,31 @@ func (uc UserController) GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respond(w, r, http.StatusOK, user)
+}
+
+// PostJob adds a new job to the database.
+func (uc UserController) PostJob(w http.ResponseWriter, r *http.Request) {
+	login := r.Context().Value(contextKey("login")).(string)
+	var j Job
+	if err := json.NewDecoder(r.Body).Decode(&j); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	j.ID = bson.NewObjectId()
+	j.UserLogin = login
+	if err := uc.DB.CreateJob(&j); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// GetAllJobs adds a new job to the database.
+func (uc UserController) GetAllJobs(w http.ResponseWriter, r *http.Request) {
+	login := r.Context().Value(contextKey("login")).(string)
+	jobs, err := uc.DB.FindAllJobs(login)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	respond(w, r, http.StatusOK, jobs)
 }
