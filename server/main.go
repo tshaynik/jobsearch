@@ -37,10 +37,11 @@ func main() {
 	r.HandleFunc("/", notImplemented)
 	r.HandleFunc("/login", auth.Login).Methods(http.MethodGet)
 	r.HandleFunc("/callback", auth.Callback)
+	r.HandleFunc("/logout", auth.Logout)
 
 	r.Handle("/jobs", uc.MustAuth(http.HandlerFunc(uc.GetAllJobs))).Methods(http.MethodGet)
 	r.Handle("/jobs", uc.MustAuth(http.HandlerFunc(uc.PostJob))).Methods(http.MethodPost)
-	r.HandleFunc("/jobs/{id}", notImplemented).Methods(http.MethodGet)
+	r.Handle("/jobs/{id}", uc.MustAuth(http.HandlerFunc(uc.GetJobByID))).Methods(http.MethodGet)
 	r.HandleFunc("/jobs/{id}", notImplemented).Methods(http.MethodDelete)
 	r.HandleFunc("/jobs/{id}/apply", notImplemented).Methods(http.MethodPut)
 

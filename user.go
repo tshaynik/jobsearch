@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/google/go-github/github"
+	"github.com/gorilla/mux"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -99,4 +100,16 @@ func (uc UserController) GetAllJobs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respond(w, r, http.StatusOK, jobs)
+}
+
+// GetJobByID adds a new job to the database.
+func (uc UserController) GetJobByID(w http.ResponseWriter, r *http.Request) {
+	login := r.Context().Value(contextKey("login")).(string)
+	id := mux.Vars(r)["id"]
+	job, err := uc.DB.FindJobByID(login, id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	respond(w, r, http.StatusOK, job)
 }

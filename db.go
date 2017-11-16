@@ -49,6 +49,17 @@ func (db DB) FindAllJobs(login string) ([]*Job, error) {
 	return jobs, nil
 }
 
+// FindJobByID returns all jobs in the database.
+func (db DB) FindJobByID(login, id string) (*Job, error) {
+	s := db.session.Copy()
+	defer s.Close()
+	var job Job
+	if err := s.DB(app).C("jobs").Find(bson.M{"user_login": login, "_id": id}).One(&job); err != nil {
+		return nil, err
+	}
+	return &job, nil
+}
+
 // SaveAuthState commits the state object used for validating the OAuth 2.0
 // authentication into the database.
 func (db DB) SaveAuthState(st *State) error {
