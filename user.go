@@ -12,7 +12,7 @@ import (
 
 // User is an authenticated user of the jobsearch app.
 type User struct {
-	ID        bson.ObjectId `json:"id" bson:"_id"`
+	ID        bson.ObjectId `json:"id" bson:"_id,omitempty"`
 	Login     string        `json:"login" bson:"login"`
 	AvatarURL string        `json:"avatar_url" bson:"avatar_url"`
 }
@@ -20,7 +20,6 @@ type User struct {
 // NewUserFromGithub creates a new user instance from a github user.
 func NewUserFromGithub(gu *github.User) *User {
 	return &User{
-		ID:        bson.NewObjectId(),
 		Login:     gu.GetLogin(),
 		AvatarURL: gu.GetAvatarURL(),
 	}
