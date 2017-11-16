@@ -1,6 +1,10 @@
 package jobsearch
 
-import "net/http"
+import (
+	"log"
+	"net/http"
+	"time"
+)
 
 // Middleware can apply new behaviours to http handlers before and/or after the
 // handlers are served
@@ -35,4 +39,18 @@ func (m middleware) Adapt(target http.Handler) http.Handler {
 func (m middleware) AdaptFunc(target http.HandlerFunc) http.Handler {
 	handler := http.Handler(target)
 	return m.Adapt(handler)
+}
+
+// LogRequest takes a logger and returns an Adapter that logs http request details.
+func LogRequest(l *log.Logger) Adapter {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+			next.ServeHTTP(w, r)
+			duration := time.Since(start)
+			l.Printf(" %s | %s %s\t | user: %s | duration: %s\n",
+				r.Host, r.Method, r.URL.Path, duration,
+				r.Context().Value(contextKey("login")).(string))
+		})
+	}
 }

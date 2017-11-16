@@ -34,11 +34,14 @@ func main() {
 	}
 	uc := jobsearch.NewUserController(db)
 
-	authMiddleware := jobsearch.NewMiddleware(uc.MustAuth)
+	authMiddleware := jobsearch.NewMiddleware(
+		jobsearch.LogRequest(log.New(os.Stdout, "\nrequest log | ", log.LstdFlags)),
+		uc.MustAuth,
+	)
 
 	r.HandleFunc("/", notImplemented)
 	r.HandleFunc("/login", auth.Login).Methods(http.MethodGet)
-	r.HandleFunc("/callback", auth.Callback)
+	r.HandleFunc("/callback", auth.Callback).Methods(http.MethodGet)
 	r.HandleFunc("/logout", auth.Logout)
 
 	r.Handle("/jobs", authMiddleware.AdaptFunc(uc.GetAllJobs)).Methods(http.MethodGet)
