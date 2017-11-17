@@ -12,17 +12,51 @@ import (
 	mgo "gopkg.in/mgo.v2"
 )
 
+type config struct {
+	Port               string
+	DBConfig           string
+	GithubClientID     string
+	GithubClientSecret string
+}
+
+func newConfig() *config {
+	port := os.Getenv("JOBSEARCH_PORT")
+	if port == "" {
+		port = ":8080"
+	}
+	dbconfig := os.Getenv("JOBSEARCH_DB")
+	if dbconfig == "" {
+		dbconfig = "localhost"
+	}
+	ghID := os.Getenv("GITHUB_CLIENT_ID")
+	if ghID == "" {
+		log.Fatalln("GITHUB_CLIENT_ID environtment variable must be set to enable login.")
+	}
+	ghSecret := os.Getenv("GITHUB_CLIENT_SECRET")
+	if ghSecret == "" {
+		log.Fatalln("GITHUB_CLIENT_SECRET environtment variable must be set to enable login.")
+	}
+	return &config{
+		Port:               port,
+		DBConfig:           dbconfig,
+		GithubClientID:     ghID,
+		GithubClientSecret: ghSecret,
+	}
+}
+
 func main() {
 	r := mux.NewRouter()
 
+	config := newConfig()
+
 	oauthConfig := &oauth2.Config{
-		ClientID:     os.Getenv("GITHUB_CLIENT_ID"),
-		ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
+		ClientID:     config.GithubClientID,
+		ClientSecret: config.GithubClientSecret,
 		Endpoint:     github.Endpoint,
 		RedirectURL:  "http://localhost:9090/callback",
 	}
 
-	s, err := mgo.Dial("localhost")
+	s, err := mgo.Dial(config.DBConfig)
 	if err != nil {
 		log.Fatalln("Failed to dial ")
 	}
@@ -52,8 +86,8 @@ func main() {
 
 	r.Handle("/user", uc.MustAuth(http.HandlerFunc(uc.GetUser)))
 
-	log.Println("Listening on port :9090")
-	http.ListenAndServe(":9090", r)
+	log.Println("Listening on port", config.Port)
+	http.ListenAndServe(config.Port, r)
 }
 
 var notImplemented = http.HandlerFunc(
