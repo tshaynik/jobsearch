@@ -112,3 +112,14 @@ func (uc UserController) GetJobByID(w http.ResponseWriter, r *http.Request) {
 	}
 	respond(w, r, http.StatusOK, job)
 }
+
+// DeleteJobByID adds a new job to the database.
+func (uc UserController) DeleteJobByID(w http.ResponseWriter, r *http.Request) {
+	login := r.Context().Value(contextKey("login")).(string)
+	id := mux.Vars(r)["id"]
+	if err := uc.DB.RemoveJob(login, id); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	respond(w, r, http.StatusOK, nil)
+}

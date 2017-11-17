@@ -24,11 +24,11 @@ func (db DB) CreateJob(j *Job) error {
 	return s.DB(app).C("jobs").Insert(j)
 }
 
-// DeleteJob deletes a job with a given ID from the database
-func (db DB) DeleteJob(id string) error {
+// RemoveJob deletes a job with a given ID from the database
+func (db DB) RemoveJob(login, id string) error {
 	s := db.session.Copy()
 	defer s.Close()
-	return s.DB(app).C("jobs").RemoveId(id)
+	return s.DB(app).C("jobs").Remove(bson.M{"login": login, "id": id})
 }
 
 // UpdateJob replaces an existing job in the database with a new job.

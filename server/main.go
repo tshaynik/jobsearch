@@ -47,7 +47,7 @@ func main() {
 	r.Handle("/jobs", authMiddleware.AdaptFunc(uc.GetAllJobs)).Methods(http.MethodGet)
 	r.Handle("/jobs", authMiddleware.AdaptFunc(uc.PostJob)).Methods(http.MethodPost)
 	r.Handle("/jobs/{id}", authMiddleware.AdaptFunc(uc.GetJobByID)).Methods(http.MethodGet)
-	r.HandleFunc("/jobs/{id}", notImplemented).Methods(http.MethodDelete)
+	r.Handle("/jobs/{id}", authMiddleware.AdaptFunc(uc.DeleteJobByID)).Methods(http.MethodDelete)
 	r.HandleFunc("/jobs/{id}/apply", notImplemented).Methods(http.MethodPut)
 
 	r.Handle("/user", uc.MustAuth(http.HandlerFunc(uc.GetUser)))
